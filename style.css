@@ -1,0 +1,28 @@
+@CHARSET "UTF-8";
+
+span.fixed {
+	width: 10em;
+	float: left;
+}
+
+span.fixedRight {
+	text-align: right;
+	width: 5em;
+	float: left;
+}
+
+dt {
+	font-weight: bold;
+}
+
+body {
+	text-align: justify;
+}
+
+.epubbody {
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1cm;
+  padding-right: 1cm;
+  width: 20cm;
+}
