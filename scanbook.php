@@ -4,6 +4,7 @@ session_start();
 include_once("RelativePath.php");
 
 $showChapter = 1;
+$showToc = FALSE;
 
 if ($_GET['file'] != "") {
 	$tempFile = rawurldecode($_GET['file']);
@@ -17,6 +18,9 @@ if (!isset($file)) {
 }
 if ($_GET['show'] != "") {
 	$showChapter = (int)$_GET['show'];
+}
+if ($_GET['showToc'] == "true") {
+	$showToc = TRUE;
 }
 
 if ($_GET['reload'] == "true") {
@@ -53,13 +57,10 @@ if ($_GET['ext'] != "") {
 	</p>
 </body>
 </html>
-
-
 <?php
 exit;
 	}
 }
-
 
 $IDENTIFIER_EPUB = 'application/epub+zip';
 
@@ -195,7 +196,8 @@ if (!isset($_SESSION['chapters']) || $_SESSION['file'] != $file) {
 		$bookAuthor = (string)$xNcx->docAuthor->text;
 
 		$navMap = $xNcx->navMap;
-
+		$toc = updateLinks(parseNavMap($navMap), $navAddr, $chapterDir, $chaptersId, $css);
+		
 		zip_close($zipArchive);
 		$_SESSION['bookRoot'] = $bookRoot;
 		$_SESSION['file'] = $file;
@@ -219,7 +221,8 @@ if (!isset($_SESSION['chapters']) || $_SESSION['file'] != $file) {
 		// 		$_SESSION['ncxPath'] = $ncxPath;
 		// 		$_SESSION['xNcx'] = $xNcx;
 		// 		$_SESSION['ncx'] = $ncx;
-		// 		$_SESSION['navMap'] = $navMap;
+		//		$_SESSION['navMap'] = $navMap;
+		$_SESSION['toc'] = $toc;
 		// 		$_SESSION['spineIds'] = $spineIds;
 		$_SESSION['chapters'] = $chapters;
 		$_SESSION['headers'] = $headers;
@@ -254,6 +257,7 @@ if (isset($_SESSION['chapters'])) {
 	// 	$xNcx = $_SESSION['xNcx'];
 	// 	$ncx = $_SESSION['ncx'];
 	// 	$navMap = $_SESSION['navMap'];
+	$toc = $_SESSION['toc'];
 	// 	$spineIds = $_SESSION['spineIds'];
 	$chapters = $_SESSION['chapters'];
 	$headers = $_SESSION['headers'];
@@ -324,6 +328,7 @@ if (isset($_SESSION['chapters'])) {
 			$nav .= "&nbsp;&nbsp;&gt;&nbsp;&nbsp; &nbsp; &nbsp;&gt; &gt;|&nbsp;";
 		}
 
+		$nav .= " &nbsp; <a href=\"" . $navAddr . "&show=" . $showChapter . ($showToc ? "" : "&showToc=true") . "\">Table of Contents</a>";
 		$nav .= " &nbsp; <a href=\"" . $navAddr . "&show=" . $showChapter . "&reload=true\">Reload</a></p>\n";
 
 		if ($showChapter < 1 || $showChapter > sizeof($chapters)) {
@@ -332,32 +337,32 @@ if (isset($_SESSION['chapters'])) {
 
 		echo $nav;
 		echo "<div class='epubbody' id='epubbody'>";
-		echo $chapters[$showChapter-1];
+		if ($showToc) {
+			echo $toc;
+		} else {
+		    echo $chapters[$showChapter-1];
+		}
 		echo "\n</div>\n";
 		echo $nav;
 	}
 }
 
-function parseNavMap($navMap) {
-	echo "<dl>\n";
+function parseNavMap($navMap, $level = 0) {
+	$indent = str_repeat("    ", $level);
+	$nav = $indent . "<ul>\n";
 
 	foreach ($navMap->navPoint as $item) {
 		$id = (string)$item["id"];
-		$playOrder = (int)$item["playOrder"];
 		$label = (string)$item->navLabel->text;
 		$src =  (string)$item->content["src"];
+		$nav .= $indent . "  <li><a href=\"" . $bookRoot . $src . "\">$label</a></li>\n";
 
-		echo "<dt>Id: $id</dt>\n";
-		echo "<dd>playOrder: $playOrder</dd>\n";
-		echo "<dd>Label: $label</dd>\n";
-		echo "<dd>Src: " . $bookRoot . $src . "</dd>\n";
-		echo "<dd>Type: <em>" . $fileTypes[$fileLocations[$src]] . "</em></dd>\n";
-
-		if (count($navMap->navPoint->navPoint) > 0) {
-			parseNavMap($navMap->navPoint);
+		if ((bool)$item->navPoint == TRUE) {
+			$nav .= parseNavMap($item, $level+1);
 		}
 	}
-	echo "</dl>\n";
+	$nav .= $indent . "</ul>\n";
+	return $nav;
 }
 
 function readZipEntry($zipEntry) {
@@ -383,20 +388,23 @@ function updateLinks($chapter, $navAddr, $chapterDir, $chaptersId, $css) {
 	$itemCount = count($links);
 	for ($idx = 0; $idx < $itemCount; $idx++) {
 		$link = $links[$idx];
-echo "<!-- link 0 : " . $link[0] . " -->\n";
-echo "<!-- link 1 : " . $link[1] . " -->\n";
 		if (preg_match('#https*://.+?\..+#i', $link[1])) {
 			//$chapter = str_replace($link[0], " href=\"scanbook.php?ext=" . rawurlencode($link[1]) . "\"", $chapter);
-echo "<!-- REPL 1 : " . " href=\"scanbook.php?ext=" . rawurlencode($link[1]) . "\"" . " -->\n";
 		} else {
 			$refFile = RelativePath::pathJoin($chapterDir, $link[1]);
+			$id = "";
+			if (strpos($refFile, "#") > 0) {
+				$array = split("#", $refFile);
+				$refFile = $array[0];
+				$id = "#" . $array[1];
+			}
 
 			if (isset($chaptersId[$refFile])) {
-				$chapter = str_replace($link[0], " href=\"" . $navAddr  . "&show=" . $chaptersId[$refFile] . "\"", $chapter);
+				$chapter = str_replace($link[0], " href=\"" . $navAddr  . "&show=" . $chaptersId[$refFile] . $id . "\"", $chapter);
 			} else if (isset($css[$refFile])) {
-				$chapter = str_replace($link[0], " href=\"" . $navAddr  . "&ext=" . rawurlencode($refFile) . "\"", $chapter);
+				$chapter = str_replace($link[0], " href=\"" . $navAddr  . "&ext=" . rawurlencode($refFile) . $id . "\"", $chapter);
 			} else {
-				$chapter = str_replace($link[0], " href=\"scanbook.php?ext=" . rawurlencode($refFile) . "\"", $chapter);
+				$chapter = str_replace($link[0], " href=\"scanbook.php?ext=" . rawurlencode($refFile) . $id . "\"", $chapter);
 			}
 		}
 	}
