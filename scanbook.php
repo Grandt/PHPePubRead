@@ -173,7 +173,7 @@ if (!isset($_SESSION['chapters']) || $_SESSION['file'] != $file) {
 				$head = updateLinks($head, $navAddr, $chapterDir, $chaptersId, $css);
 
 				$headers[] = $head;
-					
+
 				$start = strpos($chapter, "<body");
 				$start = strpos($chapter, ">", $start) +1;
 				$end = strpos($chapter, "</body", $start);
@@ -197,7 +197,7 @@ if (!isset($_SESSION['chapters']) || $_SESSION['file'] != $file) {
 
 		$navMap = $xNcx->navMap;
 		$toc = updateLinks(parseNavMap($navMap), $navAddr, $chapterDir, $chaptersId, $css);
-		
+
 		zip_close($zipArchive);
 		$_SESSION['bookRoot'] = $bookRoot;
 		$_SESSION['file'] = $file;
@@ -273,7 +273,7 @@ if (isset($_SESSION['chapters'])) {
 
 			while($zipEntry = zip_read($zipArchive)) {
 				if (zip_entry_filesize($zipEntry) > 0) {
-						
+
 					//echo "<!-- $refType \nname: ". zip_entry_name($zipEntry) ."\nname2: ". $bookRoot . $ext ."-->\n";
 
 					if (zip_entry_name($zipEntry) == ($bookRoot . $ext)) {
@@ -290,7 +290,7 @@ if (isset($_SESSION['chapters'])) {
 						echo readZipEntry($zipEntry);
 					}
 				}
-					
+
 			}
 			zip_close($zipArchive);
 			exit;
